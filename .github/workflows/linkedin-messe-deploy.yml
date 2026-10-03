@@ -1,0 +1,60 @@
+name: Deploy LinkedIn-Messe-PWA
+
+on:
+  push:
+    branches: [master]
+    paths: ['linkedin-messe/**', '.github/workflows/linkedin-messe-deploy.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: linkedin-messe-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: linkedin-messe/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          tools: composer:v2
+
+      - name: Abhängigkeiten installieren
+        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+
+      - name: PHP-Syntax prüfen
+        run: for f in *.php lib/*.php; do php -l "$f"; done
+
+      - name: SSH einrichten
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ vars.SSH_PORT || '22' }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          if [ -n "$SSH_KNOWN_HOSTS" ]; then
+            printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" > ~/.ssh/known_hosts
+          fi
+
+      - name: Per rsync hochladen
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ vars.SSH_PORT || '22' }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          test -n "$DEPLOY_PATH" || { echo "Secret DEPLOY_PATH fehlt"; exit 1; }
+          # config.php und data/ (Datenbank, Fotos) liegen nur auf dem Server und werden nie überschrieben oder gelöscht.
+          rsync -az --delete \
+            --exclude 'config.php' --exclude 'data/' --exclude '.gitignore' \
+            -e "ssh -i ~/.ssh/deploy_key -p $SSH_PORT" \
+            ./ "$SSH_USER@$SSH_HOST:${DEPLOY_PATH%/}/"
