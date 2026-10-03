@@ -1,0 +1,18 @@
+{
+  "name": "Messe-Poster für LinkedIn",
+  "short_name": "Messe-Poster",
+  "description": "LinkedIn-Beiträge auf der Messe schnell vorbereiten und posten",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f2ef",
+  "theme_color": "#0b3d75",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
